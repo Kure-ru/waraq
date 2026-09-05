@@ -15,75 +15,20 @@ Usage:
   python vocab_cli.py list --tag ordering-coffee
 """
 import argparse
-import sqlite3
-from datetime import date
-
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS vocab (
-    id              INTEGER PRIMARY KEY,
-    word            TEXT,
-    transliteration TEXT,
-    gloss           TEXT,
-    root            TEXT,
-    pos             TEXT,
-    grammar_point   TEXT,
-    related_to      INTEGER REFERENCES vocab(id),
-    date_learned    DATE,
-    source          TEXT,
-    CHECK (word IS NOT NULL OR grammar_point IS NOT NULL)
-);
-
-CREATE TABLE IF NOT EXISTS vocab_tag (
-    vocab_id INTEGER NOT NULL REFERENCES vocab(id),
-    tag      TEXT NOT NULL,
-    PRIMARY KEY (vocab_id, tag)
-);
-"""
-
-def get_conn(db_path):
-    conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA foreign_keys = ON;")
-    conn.executescript(SCHEMA)
-    return conn
+from store import get_conn, insert_vocab
 
 def cmd_add(args, conn):
-    if not args.word and not args.grammar_point:
-        print("Error: provide either --word or --grammar-point")
-
-    date_learned = args.date_learned or date.today().isoformat()
-
-    cur = conn.execute(
-        """
-        INSERT INTO vocab
-            (word, transliteration, gloss, root, pos, grammar_point, related_to, date_learned, source)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            args.word,
-            args.translit,
-            args.gloss,
-            args.root,
-            args.pos,
-            args.grammar_point,
-            args.related_to,
-            date_learned,
-            args.source,
-        ),
-    )
-    vocab_id = cur.lastrowid
-
     tags = [t.strip() for t in (args.tags or "").split(",") if t.strip()]
-    for tag in tags:
-        conn.execute(
-            "INSERT OR IGNORE INTO vocab_tag (vocab_id, tag) VALUES (?, ?)",
-            (vocab_id, tag)
-        )
 
-    conn.commit()
+    vocab_id = insert_vocab(conn, word=args.word, translit=args.translit, gloss=args.gloss, root=args.root, pos=args.pos, grammar_point=args.grammar_point, related_to=args.related_to, date_learned=args.date_learned, source=args.source, tags=tags)
+
+    if vocab_id is None:
+        return
+
     label = args.word or args.grammar_point
     tag_str = f" [{', '.join(tags)}]" if tags else ""
+    print(f"Added #{vocab_id}: {label}{tag_str}")
 
-    print(f" Added #{vocab_id}: {label}{tag_str}")
 
 def cmd_list(args, conn):
     if args.tag:
