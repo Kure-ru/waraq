@@ -15,7 +15,7 @@ Usage:
   python vocab_cli.py list --tag ordering-coffee
 """
 import argparse
-from store import get_conn, insert_vocab
+from store import get_by_tag, get_conn, insert_vocab
 
 def cmd_add(args, conn):
     tags = [t.strip() for t in (args.tags or "").split(",") if t.strip()]
@@ -32,16 +32,7 @@ def cmd_add(args, conn):
 
 def cmd_list(args, conn):
     if args.tag:
-        rows = conn.execute(
-            """
-            SELECT v.id, COALESCE(v.word, v.grammar_point) AS label, v.gloss
-            FROM vocab v
-            JOIN vocab_tag vt ON vt.vocab_id = v.id
-            WHERE vt.tag = ?
-            ORDER BY v.date_learned
-            """,
-            (args.tag,),
-        ).fetchall()
+        rows = get_by_tag(conn, args.tag)
     else:
         rows = conn.execute(
             """
@@ -54,9 +45,10 @@ def cmd_list(args, conn):
         print("No entries found.")
         return
 
-    for vocab_id, label, gloss in rows:
-        gloss_str = f" - {gloss}" if gloss else ""
-        print(f"#{vocab_id}: {label}{gloss_str}")
+    for row in rows:
+        label = row["word"] or row["grammar_point"]
+        gloss_str = f" - {row['gloss']}" if row["gloss"] else ""
+        print(f"#{row['id']}: {label}{gloss_str}")
 
 
 
