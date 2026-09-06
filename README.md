@@ -1,27 +1,28 @@
 # waraq
 
-## vocab_cli.py
+A level-locked Arabic conversation partner.
 
-A command-line tool for logging entries into the known-vocabulary store. The
-foundation for the level-locked Arabic conversation partner. Add words and
-grammar points one at a time as you learn them, and list what's already
-logged.
+## 0. Database schema
 
-## Setup
+SQLite database (`waraq.db`), created automatically on first run at the
+path given by `--db` (defaults to `waraq.db` in the current directory).
 
-```bash
-python vocab_cli.py add --db waraq.db ...
-```
+- **`vocab`**: word, transliteration, gloss, root, part of speech,
+  grammar point, `related_to` (self-referencing FK, e.g. for broken
+  plurals pointing back to their singular), date learned, source.
+- **`vocab_tag`**: join table mapping vocab entries to one or more tags
+  (e.g. scenario tags like `ordering-coffee`).
 
-The database file is created automatically on first run, at the path given
-by `--db` (defaults to `waraq.db` in the current directory). The schema
-(`vocab` and `vocab_tag` tables) is created if it doesn't already exist.
+Constraints enforced at the DB level:
 
-## Adding an entry
+- Every entry must have a `word` or a `grammar_point` (or both), enforced
+  via a `CHECK` constraint.
+- Duplicates are rejected via a unique index on
+  `COALESCE(word, grammar_point) + source`.
 
-Every entry is either a **word** or a **grammar point** — at least one of
-the two is required; the database itself enforces this and the CLI will
-refuse to insert an entry missing both.
+## a. CLI — add and retrieve words (`vocab_cli.py`)
+
+### Adding an entry
 
 ```bash
 python vocab_cli.py add \
@@ -43,7 +44,7 @@ python vocab_cli.py add \
   --tags "introducing-yourself"
 ```
 
-### Fields
+#### Fields
 
 | Flag              | Meaning                                                                                           |
 | ----------------- | ------------------------------------------------------------------------------------------------- |
@@ -61,7 +62,7 @@ python vocab_cli.py add \
 Each tag becomes its own row in `vocab_tag`, so an entry can carry any
 number of tags.
 
-## Listing entries
+### Listing / retrieving entries
 
 ```bash
 python vocab_cli.py list
@@ -69,5 +70,17 @@ python vocab_cli.py list --tag ordering-coffee
 python vocab_cli.py list -t ordering-coffee
 ```
 
-Without `--tag`, lists everything in the store ordered by date learned.
-With `--tag`, filters to entries carrying that tag.
+- Without `--tag`: lists everything in the store, ordered by date learned.
+- With `--tag`: filters to entries carrying that tag, via `get_by_tag` in
+  `store.py`.
+
+Output is formatted as `#id: label - gloss`, where `label` falls back from
+`word` to `grammar_point` when the word field is empty.
+
+## b. Bulk import from CSV
+
+Imports a CSV of vocab entries in a single pass (tested against a seed
+CSV file).
+
+Tags within a CSV cell are `#`-delimited (not comma), to avoid clashing
+with the CSV's own column delimiter.

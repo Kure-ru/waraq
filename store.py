@@ -30,6 +30,7 @@ def get_conn(db_path):
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys = ON;")
     conn.executescript(SCHEMA)
+    conn.row_factory = sqlite3.Row
     return conn
 
 def insert_vocab(conn, word=None, translit=None, gloss=None, root=None, pos=None, grammar_point=None, related_to=None, date_learned=None, source=None, tags=None):
@@ -70,3 +71,14 @@ def insert_vocab(conn, word=None, translit=None, gloss=None, root=None, pos=None
         return vocab_id
     except sqlite3.IntegrityError:
         return None
+
+def get_by_tag(conn, tag):
+    return conn.execute(
+        """
+        SELECT *
+        FROM vocab v
+        JOIN vocab_tag vt ON vt.vocab_id = v.id
+        WHERE vt.tag = ?
+        ORDER BY v.date_learned
+        """,
+        (tag,),).fetchall()
