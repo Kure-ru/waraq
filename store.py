@@ -72,23 +72,27 @@ def insert_vocab(conn, word=None, translit=None, gloss=None, root=None, pos=None
     except sqlite3.IntegrityError:
         return None
 
-def get_by_tag(conn, tag):
-    return conn.execute(
-        """
-        SELECT *
-        FROM vocab v
-        JOIN vocab_tag vt ON vt.vocab_id = v.id
-        WHERE vt.tag = ?
-        ORDER BY v.date_learned
-        """,
-        (tag,),).fetchall()
+def _build_filters(tag, before_date):
+    filters = [
+        (tag, "vt.tag = ?"),
+        (before_date, "v.date_learned < ?"),
+    ]
+    clauses = [frag for value, frag in filters if value is not None]
+    params = [value for value, frag in filters if value is not None]
+    return clauses, params
 
-def get_before_date(conn, before_date):
-    return conn.execute(
-        """
-        SELECT *
-        FROM vocab v
-        WHERE v.date_learned < ?
-        ORDER BY v.date_learned
-        """,
-        (before_date,),).fetchall()
+def get_known_vocab(conn, tag=None, before_date=None):
+        clauses, params = _build_filters(tag, before_date)
+
+        join_clauses = "JOIN vocab_tag vt ON vt.vocab_id = v.id" if tag is not None else ""
+        where_clauses = "WHERE " + " AND ".join(clauses) if clauses else ""
+
+        sql = f"""
+            SELECT *
+            FROM vocab v
+            {join_clauses}
+            {where_clauses}
+            ORDER BY v.date_learned
+            """
+
+        return conn.execute(sql, params).fetchall()
