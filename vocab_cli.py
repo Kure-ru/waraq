@@ -15,7 +15,7 @@ Usage:
   python vocab_cli.py list --tag ordering-coffee
 """
 import argparse
-from store import get_before_date, get_by_tag, get_conn, insert_vocab
+from store import get_conn, get_known_vocab, insert_vocab
 
 def cmd_add(args, conn):
     tags = [t.strip() for t in (args.tags or "").split(",") if t.strip()]
@@ -31,17 +31,7 @@ def cmd_add(args, conn):
 
 
 def cmd_list(args, conn):
-    if args.tag:
-        rows = get_by_tag(conn, args.tag)
-    elif args.before:
-        rows = get_before_date(conn, args.before)
-    else:
-        rows = conn.execute(
-            """
-            SELECT id, COALESCE(word, grammar_point) AS label, gloss
-            FROM vocab ORDER BY date_learned
-            """
-        ).fetchall()
+    rows = get_known_vocab(conn, tag=args.tag, before_date=args.before_date)
 
     if not rows:
         print("No entries found.")
@@ -75,7 +65,7 @@ def main():
 
     p_list = sub.add_parser("list", help="list entries, optionally by tag")
     p_list.add_argument("-t", "--tag")
-    p_list.add_argument("-b", "--before", type=str)
+    p_list.add_argument("-b", "--before-date", type=str, dest="before_date")
     p_list.set_defaults(func=cmd_list)
 
     args = parser.parse_args()
