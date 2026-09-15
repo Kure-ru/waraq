@@ -82,3 +82,13 @@ def get_by_tag(conn, tag):
         ORDER BY v.date_learned
         """,
         (tag,),).fetchall()
+
+def get_before_date(conn, before_date):
+    return conn.execute(
+        """
+        SELECT *
+        FROM vocab v
+        WHERE v.date_learned < ?
+        ORDER BY v.date_learned
+        """,
+        (before_date,),).fetchall()
