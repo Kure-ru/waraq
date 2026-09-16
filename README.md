@@ -2,6 +2,24 @@
 
 A level-locked Arabic conversation partner.
 
+## Project structure
+
+```
+waraq/
+├── waraq/
+│ ├── init.py
+│ ├── store.py # schema + retrieval/insert functions
+│ ├── csv_import.py # bulk CSV import
+│ └── vocab_cli.py # CLI: add / list
+├── tests/
+│ └── test_vocab.py
+├── data/
+│ ├── seed.csv
+│ └── waraq.db # gitignored
+├── pyproject.toml
+└── README.md
+```
+
 ## 0. Database schema
 
 SQLite database (`waraq.db`), created automatically on first run at the

@@ -1,6 +1,6 @@
 import csv
 
-from store import get_conn, insert_vocab
+from waraq.store import get_conn, insert_vocab
 
 def check_empty(row):
     return {col: (val if val else None) for col, val in row.items()}
