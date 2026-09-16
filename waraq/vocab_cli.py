@@ -15,7 +15,7 @@ Usage:
   python vocab_cli.py list --tag ordering-coffee
 """
 import argparse
-from store import get_conn, get_known_vocab, insert_vocab
+from waraq.store import get_conn, get_known_vocab, insert_vocab
 
 def cmd_add(args, conn):
     tags = [t.strip() for t in (args.tags or "").split(",") if t.strip()]
