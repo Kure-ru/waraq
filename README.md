@@ -8,14 +8,14 @@ A level-locked Arabic conversation partner.
 waraq/
 ├── waraq/
 │ ├── init.py
-│ ├── store.py # schema + retrieval/insert functions
-│ ├── csv_import.py # bulk CSV import
-│ └── vocab_cli.py # CLI: add / list
+│ ├── store.py       # schema + retrieval/insert
+│ ├── csv_import.py  # bulk CSV import
+│ └── vocab_cli.py   # CLI: add / list
 ├── tests/
 │ └── test_vocab.py
 ├── data/
-│ ├── seed.csv
-│ └── waraq.db # gitignored
+│ ├── seed.csv        # gitignored
+│ └── waraq.db        # gitignored
 ├── pyproject.toml
 └── README.md
 ```
@@ -38,12 +38,15 @@ Constraints enforced at the DB level:
 - Duplicates are rejected via a unique index on
   `COALESCE(word, grammar_point) + source`.
 
-## a. CLI — add and retrieve words (`vocab_cli.py`)
+## a. CLI — add and retrieve words
 
 ### Adding an entry
 
+All commands accept `--db <path>` to point at a different SQLite file
+(defaults to `waraq.db` in the current directory).
+
 ```bash
-python vocab_cli.py add \
+python waraq.vocab_cli.py add \
   --word "كتاب" \
   --translit "kitab" \
   --gloss "book" \
@@ -55,7 +58,7 @@ python vocab_cli.py add \
 ```
 
 ```bash
-python vocab_cli.py add \
+python waraq.vocab_cli.py add \
   --grammar-point "negating equational sentences (ma/laysa)" \
   --date-learned 2026-09-12 \
   --source "teacher notes session 12" \
@@ -83,17 +86,20 @@ number of tags.
 ### Listing / retrieving entries
 
 ```bash
-python vocab_cli.py list
-python vocab_cli.py list --tag ordering-coffee
-python vocab_cli.py list -t ordering-coffee
+python -m waraq.vocab_cli list
+python -m waraq.vocab_cli list --tag ordering-coffee
+python -m waraq.vocab_cli list -t ordering-coffee
+python -m waraq.vocab_cli list --before-date 2026-09-01
+python -m waraq.vocab_cli list -t ordering-coffee -b 2026-09-01
 ```
 
-- Without `--tag`: lists everything in the store, ordered by date learned.
-- With `--tag`: filters to entries carrying that tag, via `get_by_tag` in
-  `store.py`.
+| Flag                  | Meaning                                                   |
+| --------------------- | --------------------------------------------------------- |
+| `-t`, `--tag`         | Filter to entries carrying this tag                       |
+| `-b`, `--before-date` | Filter to entries learned before this date (`YYYY-MM-DD`) |
 
-Output is formatted as `#id: label - gloss`, where `label` falls back from
-`word` to `grammar_point` when the word field is empty.
+Both filters can be combined (intersection). Without either, lists
+everything in the store, ordered by date learned.
 
 ## b. Bulk import from CSV
 
@@ -102,3 +108,13 @@ CSV file).
 
 Tags within a CSV cell are `#`-delimited (not comma), to avoid clashing
 with the CSV's own column delimiter.
+
+## c. Tests
+
+```bash
+pip install -e .
+pytest
+```
+
+`pip install -e .` only needs to be run once (or again if `pyproject.toml`
+changes). It makes the `waraq` package importable so `tests/` can reach it.
