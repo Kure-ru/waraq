@@ -24,7 +24,6 @@ CREATE TABLE IF NOT EXISTS vocab_tag (
 """
 
 import sqlite3
-from datetime import date
 
 def get_conn(db_path):
     conn = sqlite3.connect(db_path)
@@ -32,45 +31,6 @@ def get_conn(db_path):
     conn.executescript(SCHEMA)
     conn.row_factory = sqlite3.Row
     return conn
-
-def insert_vocab(conn, word=None, translit=None, gloss=None, root=None, pos=None, grammar_point=None, related_to=None, date_learned=None, source=None, tags=None):
-    try:
-        if not word and not grammar_point:
-            print("Error: provide either word or grammar_point")
-            return None
-
-        date_learned = date_learned or date.today().isoformat()
-
-        cur = conn.execute(
-            """
-            INSERT INTO vocab
-                (word, transliteration, gloss, root, pos, grammar_point, related_to, date_learned, source)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                word,
-                translit,
-                gloss,
-                root,
-                pos,
-                grammar_point,
-                related_to,
-                date_learned,
-                source,
-            ),
-        )
-        vocab_id = cur.lastrowid
-
-        for tag in (tags or []):
-            conn.execute(
-                "INSERT OR IGNORE INTO vocab_tag (vocab_id, tag) VALUES (?, ?)",
-                (vocab_id, tag)
-            )
-
-        conn.commit()
-        return vocab_id
-    except sqlite3.IntegrityError:
-        return None
 
 def _build_filters(tag, before_date):
     filters = [

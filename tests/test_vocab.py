@@ -1,9 +1,11 @@
+from datetime import date
 import sqlite3
 
 import pytest
 
 from waraq.csv_import import clean_row
-from waraq.store import get_conn, insert_vocab
+from waraq.store import get_conn
+from waraq.insert import InsertResult, insert_vocab
 
 
 # ---------------------------------------------------------------------------
@@ -51,12 +53,12 @@ def test_insert_vocab_duplicate_returns_none(conn):
     assert first_id is not None
 
     second_id = insert_vocab(conn, word="kalima", source="001")
-    assert second_id is None
+    assert second_id == InsertResult(vocab_id=None, status='duplicate', detail="UNIQUE constraint failed: index 'idx_vocab_label_source'")
 
 
 def test_insert_vocab_malformed_row_returns_none(conn):
     result = insert_vocab(conn, word=None, grammar_point=None, source="001")
-    assert result is None
+    assert result == InsertResult(vocab_id=None, status='Error: provide either word or grammar_point', detail=None)
 
     count = conn.execute("SELECT COUNT(*) FROM vocab").fetchone()[0]
     assert count == 0
@@ -77,3 +79,22 @@ def test_unique_index_rejects_duplicate_label_and_source(conn):
         conn.execute(
             "INSERT INTO vocab (word, source) VALUES (?, ?)", ("kalima", "001")
         )
+
+def test_insert_vocab_defaults_date_learned_to_today(conn):
+    result = insert_vocab(conn, word="kalima", source="001")
+
+    row = conn.execute(
+        "SELECT date_learned FROM vocab WHERE id = ?", (result.vocab_id,)
+    ).fetchone()
+
+    assert row["date_learned"] == date.today().isoformat()
+
+
+def test_insert_vocab_preserves_explicit_date_learned(conn):
+    result = insert_vocab(conn, word="kalima", source="001", date_learned="2020-01-01")
+
+    row = conn.execute(
+        "SELECT date_learned FROM vocab WHERE id = ?", (result.vocab_id,)
+    ).fetchone()
+
+    assert row["date_learned"] == "2020-01-01"
