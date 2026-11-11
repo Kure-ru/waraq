@@ -118,3 +118,36 @@ pytest
 
 `pip install -e .` only needs to be run once (or again if `pyproject.toml`
 changes). It makes the `waraq` package importable so `tests/` can reach it.
+
+## 1. Level-locking
+
+A hosted LLM talks to the learner. It gets the learner's known vocabulary through the MCP server. A validator checks every reply before it is shown. If a reply contains a word the learner hasn't logged, it is rejected and the model retries.
+
+### Validator
+
+Match form is latin transliteration with numerals (`elwa9t`, `sbe7`, `3omri`)
+
+1. Normalization. Both sides (reply and stored entries) go through the same function: lowercase, strip leading and trailing punctuation from each token. Digits count as letters. Internal hyphens and apostrophes are kept. No tolerance for spelling variants: the prompt enforces the scheme, and a variant counts as unknown.
+
+2. Units. The reply is split on whitespace. Scanning left to right, the validator tries the longest known entry at each position first, then shorter ones, up to the longest entry in the known set (in tokens). A matched entry consumes its tokens.
+
+3. Direct match. A unit is known if its normalized form equals the normalized transliteration of a row in the known set. A multi-word entry (men fadhlek) is known only as a whole; its parts don't count on their own. Fused forms like ejem3a are exact-match.
+
+4. Clitic fallback. A single token with no direct match passes if it splits into one logged clitic plus a remainder that directly matches a known non-clitic entry.
+
+5. Output. Tokens failing rules 3 and 4 are collected in their original surface form. An empty list means the reply passes.
+
+#### Examples
+
+Assuming ejem3a, men fadhlek and the clitic el- are logged, and jem3a, men, fadhlek, -ek, esm and na9ra are not:
+
+| Input       | Verdict | Comment                             |
+| :---------- | :------ | ----------------------------------- |
+| ejem3a      | known   | exact match                         |
+| men fadhlek | known   | known whole phrase                  |
+| men         | unknown | parts of a phrase don't count alone |
+| fadhlek     | unknown | -ek and fadhl not logged            |
+| jem3a       | unknown | not logged bare                     |
+| el jem3a    | unknown | jem3a fails                         |
+| na9ra       | unknown | na- isn't logged                    |
+| esmek       | unknown | -ek nor esm is logged               |
